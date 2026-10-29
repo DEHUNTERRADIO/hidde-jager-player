@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0a0907">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HJ Player">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; height: 100%; }
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font: 14px system-ui, -apple-system, sans-serif; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<title>Hidde Jager PLAYER</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Cinzel:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one-screen soundboard — header + board tabs, scrolling pad grid with master fader on the right, transport bar at the bottom. Single black & gold look. */
+:root {
+  --bg: #0a0907;
+  --surface: #13110c;
+  --pad: #1c1912;
+  --pad-2: #14120d;
+  --line: #3a3121;
+  --gold: #d4af37;
+  --gold-hi: #f3d77e;
+  --gold-lo: #8c6d1f;
+  --text: #f4ecd8;
+  --muted: #9c8f70;
+  --ink: #0a0907;
+  --danger: #e0604e;
+  --f-brand: "Cinzel", "Trajan Pro", Georgia, serif;
+  --f-ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-num: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--f-ui);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 10px 12px;
+  gap: 12px;
+  background:
+    radial-gradient(1200px 500px at 50% -200px, rgba(212,175,55,.10), transparent 70%),
+    var(--bg);
+}
+
+/* Header */
+.top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+.brand { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.brand h1 {
+  margin: 0; font-family: var(--f-brand); font-weight: 800; letter-spacing: .14em;
+  font-size: clamp(15px, 2.4vw, 22px); line-height: 1.1;
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold) 55%, var(--gold-lo));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.brand h1 span { letter-spacing: .32em; font-weight: 600; }
+.total { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.total b { color: var(--text); font-family: var(--f-num); font-weight: 700; }
+.group {
+  display: inline-flex; align-items: center; gap: 2px;
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px;
+  background: var(--surface);
+}
+.ibtn {
+  width: 40px; height: 36px; border-radius: 999px; display: grid; place-items: center;
+  color: var(--gold);
+}
+.ibtn:hover { background: rgba(212,175,55,.12); }
+.ibtn.on { background: var(--gold); color: var(--ink); }
+.ibtn svg { width: 20px; height: 20px; }
+.right { justify-self: end; display: flex; gap: 8px; align-items: center; }
+.pill {
+  height: 42px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--gold); font-weight: 700; letter-spacing: .04em;
+}
+.pill.on { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+
+/* Board tabs */
+.tabs { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: 0 0 auto; min-width: 150px; height: 34px; padding: 0 18px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--line);
+  color: var(--gold); font-weight: 700; font-size: 14px; letter-spacing: .03em;
+}
+.tab.active {
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+  color: var(--ink); border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(212,175,55,.35);
+}
+.tab .n { opacity: .6; font-weight: 600; margin-left: 6px; font-size: 12px; }
+.tab.add { min-width: 0; width: 34px; padding: 0; font-size: 18px; }
+
+/* Main */
+.main { min-height: 0; display: grid; grid-template-columns: 1fr auto; gap: 14px; }
+.grid-wrap { min-height: 0; overflow-y: auto; padding: 4px; margin: -4px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
+
+.pad {
+  position: relative; overflow: hidden;
+  aspect-ratio: 1.15; max-width: 100%;
+  border-radius: 14px; border: 1px solid var(--line);
+  background: linear-gradient(160deg, var(--pad), var(--pad-2));
+  display: grid; grid-template-rows: auto 1fr auto; padding: 10px 12px 9px;
+  cursor: pointer; transition: border-color .15s, transform .08s;
+}
+.pad:hover { border-color: var(--gold-lo); }
+.pad:active { transform: scale(.985); }
+.pad.sel { box-shadow: 0 0 0 3px var(--gold-hi); border-color: var(--gold-hi); }
+.pad.bulk { box-shadow: 0 0 0 3px var(--gold); }
+.pad.bulk::after {
+  content: "✓"; position: absolute; top: 8px; right: 8px; width: 22px; height: 22px;
+  border-radius: 50%; background: var(--gold); color: var(--ink); display: grid; place-items: center;
+  font-weight: 800; font-size: 13px;
+}
+.pad.missing { opacity: .45; }
+.pad .icons { display: flex; justify-content: space-between; position: relative; z-index: 1; }
+.pad .icons button {
+  width: 28px; height: 24px; display: grid; place-items: center; border-radius: 6px;
+  color: var(--muted); opacity: .55;
+}
+.pad .icons button.on { color: var(--gold-hi); opacity: 1; }
+.pad .icons button:hover { opacity: 1; background: rgba(212,175,55,.12); }
+.pad .icons svg { width: 15px; height: 15px; }
+.pad .name {
+  position: relative; z-index: 1; align-self: center; text-align: center;
+  font-weight: 800; font-size: clamp(14px, 1.5vw, 18px); line-height: 1.18;
+  text-wrap: balance; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.pad .meta {
+  position: relative; z-index: 1;
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-family: var(--f-num); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.pad .played { font-family: var(--f-ui); font-weight: 800; letter-spacing: .08em; font-size: 10px; color: var(--gold); visibility: hidden; }
+.pad.was .played { visibility: visible; }
+.pad .prog { position: absolute; inset: 0 auto 0 0; width: 0; background: rgba(10,9,7,.18); pointer-events: none; }
+.pad.playing {
+  background: linear-gradient(160deg, var(--gold-hi), var(--gold) 60%, #b38f25);
+  border-color: var(--gold-hi); color: var(--ink);
+  box-shadow: 0 0 26px rgba(212,175,55,.45);
+}
+.pad.playing .meta, .pad.playing .played, .pad.playing .icons button { color: var(--ink); }
+.pad.playing .icons button.on { color: var(--ink); }
+.pad.paused { animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { filter: brightness(.7); } }
+.pad .edit-row { position: absolute; inset: auto 6px 30px; display: flex; justify-content: space-between; z-index: 2; }
+.pad .edit-row button {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--gold); color: var(--ink);
+  font-weight: 800; display: grid; place-items: center;
+}
+
+.addpad {
+  aspect-ratio: 1.15; max-width: 100%; border-radius: 14px; border: 1.5px dashed var(--gold-lo);
+  color: var(--gold); display: grid; place-items: center; text-align: center; padding: 12px;
+  background: rgba(212,175,55,.04); font-weight: 700; font-size: 14px; gap: 4px;
+}
+.addpad:hover { background: rgba(212,175,55,.1); }
+.addpad small { display: block; color: var(--muted); font-weight: 500; font-size: 12px; margin-top: 4px; }
+.addpad .plus { font-size: 30px; line-height: 1; font-weight: 500; }
+.empty-hint { grid-column: 1 / -1; color: var(--muted); font-size: 14px; padding: 4px 2px 0; }
+
+/* Master fader */
+.master {
+  width: 72px; align-self: end; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 12px 6px;
+  height: min(100%, 300px);
+}
+.master .lbl { font-size: 11px; font-weight: 800; letter-spacing: .1em; color: var(--gold); }
+.master .val { font-family: var(--f-num); font-size: 11px; color: var(--text); }
+.fader { position: relative; flex: 1; width: 40px; touch-action: none; cursor: ns-resize; }
+.fader .track { position: absolute; left: 50%; top: 10px; bottom: 10px; width: 6px; transform: translateX(-50%); background: #2a2418; border-radius: 3px; }
+.fader .fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, var(--gold-lo), var(--gold-hi)); border-radius: 3px; }
+.fader .knob {
+  position: absolute; left: 50%; width: 30px; height: 20px; transform: translate(-50%, 50%);
+  border-radius: 8px; background: linear-gradient(180deg, #fff6d8, var(--gold-hi)); box-shadow: 0 2px 8px rgba(0,0,0,.6);
+}
+
+/* Bottom bar */
+.bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.now { min-width: 0; flex: 1; display: flex; align-items: center; gap: 12px; }
+.now .np { min-width: 0; }
+.now .np small { display: block; font-size: 10px; letter-spacing: .12em; font-weight: 800; color: var(--muted); }
+.now .np div { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--gold-hi); }
+.sq {
+  width: 56px; height: 48px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--surface); border: 1px solid var(--line); color: var(--gold);
+}
+.sq svg { width: 22px; height: 22px; }
+.transport { display: flex; gap: 10px; }
+.transport .sq { width: 64px; height: 52px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: var(--ink); border-color: var(--gold); }
+.transport .sq:active { filter: brightness(.85); }
+
+/* Set timer */
+.timer { display: flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 4px; flex: 0 0 auto; }
+.tset { width: 40px; height: 40px; border-radius: 8px; color: var(--gold); font-weight: 800; font-family: var(--f-num); }
+.tset:hover { background: rgba(212,175,55,.12); }
+.tset.on { background: var(--gold); color: var(--ink); }
+.tclock { min-width: 92px; height: 40px; padding: 0 8px; border-radius: 8px; font-family: var(--f-num); font-weight: 700; font-size: 22px; color: var(--gold-hi); font-variant-numeric: tabular-nums; }
+.tclock.paused { opacity: .5; }
+.tclock.warn { color: #ffb347; }
+.tclock.over { color: var(--danger); animation: blink 1s steps(2) infinite; }
+.treset { width: 30px; height: 40px; color: var(--muted); font-size: 20px; }
+
+/* Modal */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.sheet {
+  width: min(460px, 100%); max-height: 90%; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--gold-lo); border-radius: 18px; padding: 20px;
+  display: grid; gap: 14px; user-select: text; -webkit-user-select: text;
+}
+.sheet h2 { margin: 0; font-family: var(--f-brand); color: var(--gold); font-size: 18px; letter-spacing: .08em; }
+.sheet label { display: grid; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+.sheet input[type=text], .sheet input[type=number] {
+  background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 10px;
+  padding: 10px 12px; font: inherit; font-size: 15px;
+}
+.sheet input[type=range] { accent-color: var(--gold); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chk { display: flex !important; grid-auto-flow: column; align-items: center; gap: 8px !important; font-size: 14px !important; color: var(--text) !important; }
+.chk input { accent-color: var(--gold); width: 18px; height: 18px; }
+.btn { height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--gold); font-weight: 700; }
+.btn.primary { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+.btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, var(--line)); }
+.btn.danger.armed { background: var(--danger); color: var(--ink); }
+.boardrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--gold); color: var(--ink); font-weight: 700; padding: 10px 16px; border-radius: 999px;
+  z-index: 60; max-width: calc(100% - 32px); text-align: center; font-size: 14px;
+}
+.drop { position: fixed; inset: 0; z-index: 40; background: rgba(10,9,7,.85); border: 3px dashed var(--gold); display: grid; place-items: center; font-family: var(--f-brand); color: var(--gold); font-size: 24px; pointer-events: none; }
+
+@media (max-width: 640px) {
+  .top { grid-template-columns: auto 1fr; }
+  .brand { grid-column: 1 / -1; grid-row: 1; }
+  .right { gap: 4px; }
+  .pill { height: 36px; padding: 0 12px; }
+  .ibtn { width: 34px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+  .tab { min-width: 96px; }
+  .master { width: 52px; }
+  .transport .sq { width: 52px; }
+  .now .np { display: none; }
+  .now > .sq { display: none; }
+  .tset { width: 34px; }
+  .tclock { min-width: 74px; font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) { .pad.paused { animation: none; } .pad { transition: none; } }
+</style>
+
+<div class="app" id="app">
+  <header class="top">
+    <div class="group">
+      <button class="ibtn" id="btnSettings" title="Instellingen" aria-label="Instellingen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+      <button class="ibtn" id="btnEdit" title="Bewerkmodus: hernoemen en volgorde" aria-label="Bewerkmodus">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+    </div>
+    <div class="brand">
+      <h1>HIDDE JAGER <span>PLAYER</span></h1>
+      <div class="total" id="total">Board total <b>00:00</b> · 0 pads</div>
+    </div>
+    <div class="right">
+      <button class="pill" id="btnBulk" title="Meerdere pads selecteren">Bulk</button>
+      <div class="group">
+        <button class="ibtn" data-tool="copy" title="Kopieer naar ander board" aria-label="Kopieer naar ander board">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button class="ibtn" data-tool="move" title="Verplaats naar ander board" aria-label="Verplaats naar ander board">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h9M8 8l4 4-4 4"/><rect x="14" y="4" width="3.5" height="3.5" rx=".6" fill="currentColor"/><rect x="19" y="4" width="3.5" height="3.5" rx=".6" fill="currentColor"/><rect x="14" y="9" width="3.5" height="3.5" rx=".6" fill="currentColor"/><rect x="19" y="9" width="3.5" height="3.5" rx=".6" fill="currentColor"/></svg>
+        </button>
+        <button class="ibtn" data-tool="delete" title="Verwijder" aria-label="Verwijder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>
+        </button>
+        <button class="ibtn" data-tool="dup" title="Dupliceer" aria-label="Dupliceer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16V4h12M15 12v6M12 15h6"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <section class="main">
+    <div class="grid-wrap"><div class="grid" id="grid"></div></div>
+    <div class="master">
+      <div class="lbl">MASTER</div>
+      <div class="fader" id="fader" tabindex="0" role="slider" aria-label="Master volume" aria-valuemin="0" aria-valuemax="100">
+        <div class="track"><div class="fill" id="faderFill"></div></div>
+        <div class="knob" id="faderKnob"></div>
+      </div>
+      <div class="val" id="masterVal">100%</div>
+    </div>
+  </section>
+
+  <footer class="bottom">
+    <div class="now">
+      <button class="sq" id="btnFull" title="Volledig scherm" aria-label="Volledig scherm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+      <div class="timer" id="timer">
+        <button class="tset" data-min="30" title="Start timer 30 minuten">30</button>
+        <button class="tset" data-min="60" title="Start timer 60 minuten">60</button>
+        <button class="tclock" id="tClock" title="Timer pauzeren / hervatten">--:--</button>
+        <button class="treset" id="tReset" title="Timer resetten" aria-label="Timer resetten">×</button>
+      </div>
+      <div class="np"><small>NU / VOLGENDE</small><div id="nowName">Voeg nummers toe om te beginnen</div></div>
+    </div>
+    <div class="transport">
+      <button class="sq" id="btnPause" title="Pauze (spatie)" aria-label="Pauze">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+      </button>
+      <button class="sq" id="btnStop" title="Stop alles (Esc)" aria-label="Stop">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+      </button>
+      <button class="sq" id="btnFade" title="Fade huidig nummer langzaam naar 0 (F)" aria-label="Fade naar 0">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 5 22 19H2z"/></svg>
+      </button>
+    </div>
+  </footer>
+</div>
+
+<input type="file" id="fileIn" accept=".mp3,.wav,audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/wave" multiple hidden>
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet"></div></div>
+<div class="drop" id="drop" hidden>Laat los om toe te voegen</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const MAX = 100;
+const $ = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = s => { s = Math.max(0, Math.round(s || 0)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60; return (h ? h + ':' + String(m).padStart(2,'0') : String(m).padStart(2,'0')) + ':' + String(x).padStart(2,'0'); };
+
+const ICON = {
+  fadein: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 20 22 6v14z"/></svg>',
+  loop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>',
+  set: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>',
+  fadeout: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 6 22 20H2z"/></svg>',
+};
+
+/* ---------- state ---------- */
+const DEFAULT = {
+  boards: [{ id: 'b1', name: 'Extra' }, { id: 'b2', name: '30 Min' }, { id: 'b3', name: '+30' }],
+  active: 'b2', pads: [], master: 1, fadeSec: 6,
+};
+let state;
+try { state = JSON.parse(localStorage.getItem('hj-player-state')) || null; } catch (e) { state = null; }
+if (!state || !Array.isArray(state.boards) || !state.boards.length) state = structuredClone(DEFAULT);
+state.fadeSec = state.fadeSec ?? 6; state.master = state.master ?? 1;
+const save = () => { try { localStorage.setItem('hj-player-state', JSON.stringify(state)); } catch (e) {} };
+
+const urls = {};            // fileId -> blob URL
+const playing = new Map();  // padId -> { el, g, src, stopping, paused }
+let current = null, selected = null, bulk = false, edit = false;
+const bulkSel = new Set();
+
+const padById = id => state.pads.find(p => p.id === id);
+const boardPads = (b = state.active) => state.pads.filter(p => p.boardId === b);
+
+/* ---------- IndexedDB for audio files ---------- */
+const dbP = new Promise(res => {
+  try { const r = indexedDB.open('hj-player', 1); r.onupgradeneeded = () => r.result.createObjectStore('files'); r.onsuccess = () => res(r.result); r.onerror = () => res(null); }
+  catch (e) { res(null); }
+});
+function idb(mode, fn) {
+  return dbP.then(db => db && new Promise((res, rej) => {
+    try { const t = db.transaction('files', mode); const r = fn(t.objectStore('files')); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); }
+    catch (e) { rej(e); }
+  })).catch(() => null);
+}
+const idbPut = (id, blob) => idb('readwrite', s => s.put(blob, id));
+const idbGet = id => idb('readonly', s => s.get(id));
+const idbDel = id => idb('readwrite', s => s.delete(id));
+
+/* ---------- audio ---------- */
+let ctx, master;
+function ensureCtx() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = state.master; master.connect(ctx.destination);
+  }
+  if (ctx.state === 'suspended') ctx.resume();
+}
+
+function startPad(p) {
+  if (!urls[p.fileId]) return toast('Dit bestand ontbreekt. Voeg het opnieuw toe.');
+  ensureCtx();
+  for (const id of [...playing.keys()]) stopPad(id, true);
+  const el = new Audio(urls[p.fileId]);
+  el.loop = !!p.loop;
+  const src = ctx.createMediaElementSource(el);
+  const g = ctx.createGain();
+  src.connect(g); g.connect(master);
+  const now = ctx.currentTime, v = p.vol ?? 1;
+  if (p.fadeIn) { g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(v, now + state.fadeSec); }
+  else g.gain.setValueAtTime(v, now);
+  const pl = { el, g, src, stopping: false, paused: false };
+  playing.set(p.id, pl);
+  current = p.id;
+  p.played = true;
+  const list = boardPads(p.boardId), i = list.indexOf(p);
+  selected = list[i + 1]?.id ?? p.id;
+  el.addEventListener('loadedmetadata', () => { if (isFinite(el.duration)) { p.dur = el.duration; save(); renderTotal(); } });
+  el.onended = () => { if (!pl.stopping) { cleanup(p.id); render(); } };
+  el.play().catch(() => { cleanup(p.id); toast('Afspelen lukt niet. Tik nog een keer op de pad.'); render(); });
+  save(); render(); tick();
+}
+
+function stopPad(id, withFade, force) {
+  const pl = playing.get(id), p = padById(id);
+  if (!pl) return;
+  if (withFade && (force || p?.fadeOut) && !pl.paused && !pl.stopping) {
+    pl.stopping = true;
+    const now = ctx.currentTime;
+    pl.g.gain.cancelScheduledValues(now);
+    pl.g.gain.setValueAtTime(pl.g.gain.value, now);
+    pl.g.gain.linearRampToValueAtTime(0, now + state.fadeSec);
+    setTimeout(() => { cleanup(id); render(); }, state.fadeSec * 1000 + 60);
+    if (current === id) current = null;
+  } else cleanup(id);
+}
+function cleanup(id) {
+  const pl = playing.get(id); if (!pl) return;
+  try { pl.el.pause(); pl.src.disconnect(); pl.g.disconnect(); } catch (e) {}
+  playing.delete(id);
+  if (current === id) current = null;
+}
+function stopAll() { for (const id of [...playing.keys()]) stopPad(id, false); render(); }
+function fadeAll() {
+  if (!playing.size) return toast('Er speelt niets om uit te faden.');
+  for (const id of [...playing.keys()]) stopPad(id, true, true);
+  toast(`Fade naar 0 in ${state.fadeSec} s`);
+  render();
+}
+
+/* ---------- set timer ---------- */
+let timer;
+try { timer = JSON.parse(localStorage.getItem('hj-player-timer')) || null; } catch (e) { timer = null; }
+timer = timer || { total: 0, endAt: 0, left: 0, running: false };
+const saveTimer = () => { try { localStorage.setItem('hj-player-timer', JSON.stringify(timer)); } catch (e) {} };
+const timerLeft = () => timer.running ? (timer.endAt - Date.now()) / 1000 : timer.left;
+function startTimer(min) { timer = { total: min * 60, endAt: Date.now() + min * 60000, left: min * 60, running: true }; saveTimer(); drawTimer(); }
+function toggleTimer() {
+  if (!timer.total) return;
+  if (timer.running) { timer.left = timerLeft(); timer.running = false; }
+  else { timer.endAt = Date.now() + timer.left * 1000; timer.running = true; }
+  saveTimer(); drawTimer();
+}
+function resetTimer() { timer = { total: 0, endAt: 0, left: 0, running: false }; saveTimer(); drawTimer(); }
+function drawTimer() {
+  const c = $('#tClock');
+  document.querySelectorAll('.tset').forEach(b => b.classList.toggle('on', timer.total === +b.dataset.min * 60));
+  if (!timer.total) { c.textContent = '--:--'; c.className = 'tclock'; return; }
+  const s = timerLeft();
+  c.textContent = s >= 0 ? fmt(Math.ceil(s)) : '+' + fmt(-s);
+  c.className = 'tclock' + (s < 0 ? ' over' : s <= 300 ? ' warn' : '') + (timer.running ? '' : ' paused');
+}
+setInterval(drawTimer, 250);
+function togglePause() {
+  const pl = current && playing.get(current);
+  if (!pl) return;
+  ensureCtx();
+  if (pl.paused) { pl.el.play(); pl.paused = false; tick(); } else { pl.el.pause(); pl.paused = true; }
+  render();
+}
+
+let raf = 0;
+function tick() {
+  cancelAnimationFrame(raf);
+  const step = () => {
+    for (const [id, pl] of playing) {
+      const node = document.querySelector(`.pad[data-id="${id}"]`); if (!node) continue;
+      const d = pl.el.duration || padById(id)?.dur || 0, t = pl.el.currentTime;
+      node.querySelector('.el').textContent = fmt(t);
+      node.querySelector('.rem').textContent = '-' + fmt(d - t);
+      node.querySelector('.prog').style.width = d ? (t / d * 100) + '%' : '0';
+    }
+    if (playing.size) raf = requestAnimationFrame(step);
+  };
+  raf = requestAnimationFrame(step);
+}
+
+/* ---------- adding files ---------- */
+function durationOf(url) {
+  return new Promise(res => {
+    const a = new Audio(); a.preload = 'metadata';
+    a.onloadedmetadata = () => res(isFinite(a.duration) ? a.duration : 0);
+    a.onerror = () => res(0); a.src = url;
+  });
+}
+async function addFiles(fileList) {
+  const files = [...fileList].filter(f => /\.(mp3|wav)$/i.test(f.name) || /audio\/(mpeg|mp3|wav|x-wav|wave)/.test(f.type));
+  if (!files.length) return toast('Alleen mp3- en wav-bestanden kunnen erin.');
+  const room = MAX - state.pads.length;
+  if (room <= 0) return toast(`Vol: maximaal ${MAX} nummers.`);
+  const take = files.slice(0, room);
+  for (const f of take) {
+    const fileId = uid();
+    urls[fileId] = URL.createObjectURL(f);
+    const dur = await durationOf(urls[fileId]);
+    idbPut(fileId, f);
+    state.pads.push({ id: uid(), boardId: state.active, fileId, name: f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim(), dur, vol: 1, fadeIn: false, fadeOut: false, loop: false, played: false });
+    if (!selected) selected = state.pads.at(-1).id;
+  }
+  save(); render();
+  toast(files.length > take.length ? `${take.length} toegevoegd. De rest past niet: maximaal ${MAX} nummers.` : `${take.length} ${take.length === 1 ? 'nummer' : 'nummers'} toegevoegd`);
+}
+function fileStillUsed(fileId) { return state.pads.some(p => p.fileId === fileId); }
+function removePads(ids) {
+  for (const id of ids) {
+    stopPad(id, false);
+    const p = padById(id); if (!p) continue;
+    state.pads = state.pads.filter(x => x.id !== id);
+    if (!fileStillUsed(p.fileId)) { idbDel(p.fileId); if (urls[p.fileId]) { URL.revokeObjectURL(urls[p.fileId]); delete urls[p.fileId]; } }
+    if (selected === id) selected = null;
+    bulkSel.delete(id);
+  }
+  save(); render();
+}
+
+/* ---------- render ---------- */
+function renderTotal() {
+  const list = boardPads();
+  const sum = list.reduce((a, p) => a + (p.dur || 0), 0);
+  $('#total').innerHTML = `Board total <b>${fmt(sum)}</b> · ${list.length} pads · ${state.pads.length}/${MAX}`;
+}
+function render() {
+  $('#tabs').innerHTML = state.boards.map(b =>
+    `<button class="tab ${b.id === state.active ? 'active' : ''}" data-board="${b.id}">${esc(b.name)}<span class="n">${boardPads(b.id).length}</span></button>`
+  ).join('') + `<button class="tab add" id="addBoard" title="Nieuw board" aria-label="Nieuw board">+</button>`;
+
+  const list = boardPads();
+  let html = list.map((p, i) => {
+    const pl = playing.get(p.id);
+    const cls = ['pad', pl && 'playing', pl?.paused && 'paused', p.played && 'was', selected === p.id && !bulk && 'sel', bulk && bulkSel.has(p.id) && 'bulk', !urls[p.fileId] && 'missing'].filter(Boolean).join(' ');
+    return `<div class="${cls}" data-id="${p.id}" tabindex="0" role="button" aria-label="${esc(p.name)}">
+      <div class="prog"></div>
+      <div class="icons">
+        <button data-act="fadeIn" class="${p.fadeIn ? 'on' : ''}" title="Fade in" aria-label="Fade in">${ICON.fadein}</button>
+        <button data-act="loop" class="${p.loop ? 'on' : ''}" title="Herhalen" aria-label="Herhalen">${ICON.loop}</button>
+        <button data-act="settings" title="Pad instellingen" aria-label="Pad instellingen">${ICON.set}</button>
+        <button data-act="fadeOut" class="${p.fadeOut ? 'on' : ''}" title="Fade out bij stop" aria-label="Fade out">${ICON.fadeout}</button>
+      </div>
+      <div class="name">${esc(p.name)}</div>
+      <div class="meta"><span class="el">00:00</span><span class="played">PLAYED</span><span class="rem">-${fmt(p.dur)}</span></div>
+      ${edit ? `<div class="edit-row"><button data-act="left" aria-label="Naar links" ${i === 0 ? 'disabled style="opacity:.3"' : ''}>‹</button><button data-act="right" aria-label="Naar rechts" ${i === list.length - 1 ? 'disabled style="opacity:.3"' : ''}>›</button></div>` : ''}
+    </div>`;
+  }).join('');
+  if (state.pads.length < MAX) html += `<button class="addpad" id="addPad"><span><span class="plus">+</span><br>Nummers toevoegen<small>mp3 of wav · nog ${MAX - state.pads.length} vrij</small></span></button>`;
+  if (!list.length) html += `<p class="empty-hint">Dit board is nog leeg. Tik op “Nummers toevoegen” of sleep mp3/wav-bestanden op het scherm.</p>`;
+  $('#grid').innerHTML = html;
+
+  $('#btnBulk').classList.toggle('on', bulk);
+  $('#btnEdit').classList.toggle('on', edit);
+  const cur = current && padById(current), nxt = selected && padById(selected);
+  $('#nowName').textContent = cur ? `▶ ${cur.name}${nxt && nxt !== cur ? '  ·  volgende: ' + nxt.name : ''}` : nxt ? `Klaar: ${nxt.name}` : 'Voeg nummers toe om te beginnen';
+  renderTotal();
+  if (playing.size) tick();
+}
+
+/* ---------- master fader ---------- */
+function setMaster(v) {
+  state.master = Math.min(1, Math.max(0, v));
+  if (master) master.gain.setTargetAtTime(state.master, ctx.currentTime, .02);
+  const pct = Math.round(state.master * 100);
+  $('#faderFill').style.height = pct + '%';
+  $('#faderKnob').style.bottom = `calc(10px + (100% - 20px) * ${state.master})`;
+  $('#masterVal').textContent = pct + '%';
+  $('#fader').setAttribute('aria-valuenow', pct);
+  save();
+}
+(() => {
+  const f = $('#fader');
+  const fromY = e => { const r = f.getBoundingClientRect(); setMaster(1 - (e.clientY - r.top - 10) / (r.height - 20)); };
+  f.addEventListener('pointerdown', e => { f.setPointerCapture(e.pointerId); fromY(e); });
+  f.addEventListener('pointermove', e => { if (f.hasPointerCapture(e.pointerId)) fromY(e); });
+  f.addEventListener('keydown', e => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { setMaster(state.master + .05); e.preventDefault(); }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { setMaster(state.master - .05); e.preventDefault(); }
+  });
+})();
+
+/* ---------- modal / toast ---------- */
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function openModal(html, bind) { $('#sheet').innerHTML = html; $('#modal').hidden = false; bind && bind($('#sheet')); }
+function closeModal() { $('#modal').hidden = true; $('#sheet').innerHTML = ''; }
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+function armDelete(btn, fn) {
+  btn.addEventListener('click', () => {
+    if (btn.classList.contains('armed')) return fn();
+    btn.classList.add('armed'); btn.dataset.orig = btn.textContent; btn.textContent = 'Zeker weten? Tik nogmaals';
+    setTimeout(() => { btn.classList.remove('armed'); btn.textContent = btn.dataset.orig; }, 3000);
+  });
+}
+
+function padSettings(p) {
+  openModal(`
+    <h2>Pad</h2>
+    <label>Naam<input type="text" id="pName" value="${esc(p.name)}"></label>
+    <label>Volume <span id="pVolV">${Math.round((p.vol ?? 1) * 100)}%</span><input type="range" id="pVol" min="0" max="1.5" step="0.01" value="${p.vol ?? 1}"></label>
+    <div class="row">
+      <label class="chk"><input type="checkbox" id="pIn" ${p.fadeIn ? 'checked' : ''}>Fade in</label>
+      <label class="chk"><input type="checkbox" id="pOut" ${p.fadeOut ? 'checked' : ''}>Fade out</label>
+      <label class="chk"><input type="checkbox" id="pLoop" ${p.loop ? 'checked' : ''}>Herhalen</label>
+      <label class="chk"><input type="checkbox" id="pPlayed" ${p.played ? 'checked' : ''}>Played</label>
+    </div>
+    <p class="note">Lengte ${fmt(p.dur)}${urls[p.fileId] ? '' : ' · bestand ontbreekt in deze browser'}</p>
+    <div class="row"><button class="btn danger" id="pDel">Verwijder pad</button><span style="flex:1"></span><button class="btn primary" id="pOk">Klaar</button></div>`,
+    s => {
+      s.querySelector('#pVol').oninput = e => {
+        p.vol = +e.target.value; s.querySelector('#pVolV').textContent = Math.round(p.vol * 100) + '%';
+        const pl = playing.get(p.id); if (pl && !pl.stopping) pl.g.gain.setTargetAtTime(p.vol, ctx.currentTime, .02);
+      };
+      s.querySelector('#pOk').onclick = () => {
+        p.name = s.querySelector('#pName').value.trim() || p.name;
+        p.fadeIn = s.querySelector('#pIn').checked; p.fadeOut = s.querySelector('#pOut').checked;
+        p.loop = s.querySelector('#pLoop').checked; p.played = s.querySelector('#pPlayed').checked;
+        const pl = playing.get(p.id); if (pl) pl.el.loop = p.loop;
+        save(); closeModal(); render();
+      };
+      armDelete(s.querySelector('#pDel'), () => { removePads([p.id]); closeModal(); });
+      s.querySelector('#pName').addEventListener('keydown', e => { if (e.key === 'Enter') s.querySelector('#pOk').click(); });
+    });
+}
+
+function boardSettings() {
+  const draw = () => openModal(`
+    <h2>Instellingen</h2>
+    <label>Boards</label>
+    ${state.boards.map(b => `<div class="boardrow"><input type="text" data-rename="${b.id}" value="${esc(b.name)}" aria-label="Naam board"><button class="btn danger" data-delb="${b.id}" ${state.boards.length < 2 ? 'disabled' : ''}>Verwijder</button></div>`).join('')}
+    <button class="btn" id="sAdd">+ Nieuw board</button>
+    <label>Fade-duur (seconden)<input type="number" id="sFade" min="0.2" max="15" step="0.1" value="${state.fadeSec}"></label>
+    <p class="note">${state.pads.length} van ${MAX} nummers gebruikt. Bestanden blijven in deze browser bewaard.</p>
+    <div class="row">
+      <button class="btn" id="sReset">Wis alle PLAYED</button>
+      <button class="btn danger" id="sClear">Alles leegmaken</button>
+      <span style="flex:1"></span><button class="btn primary" id="sOk">Klaar</button>
+    </div>`, s => {
+      s.querySelectorAll('[data-rename]').forEach(i => i.oninput = () => { const b = state.boards.find(x => x.id === i.dataset.rename); b.name = i.value || b.name; save(); render(); });
+      s.querySelectorAll('[data-delb]').forEach(btn => armDelete(btn, () => {
+        const id = btn.dataset.delb;
+        removePads(boardPads(id).map(p => p.id));
+        state.boards = state.boards.filter(b => b.id !== id);
+        if (state.active === id) state.active = state.boards[0].id;
+        save(); render(); draw();
+      }));
+      s.querySelector('#sAdd').onclick = () => { addBoard(); draw(); };
+      s.querySelector('#sFade').onchange = e => { state.fadeSec = Math.min(15, Math.max(.2, +e.target.value || 6)); save(); };
+      s.querySelector('#sReset').onclick = () => { state.pads.forEach(p => p.played = false); save(); render(); toast('Alle PLAYED-labels gewist'); };
+      armDelete(s.querySelector('#sClear'), () => { removePads(state.pads.map(p => p.id)); closeModal(); });
+      s.querySelector('#sOk').onclick = closeModal;
+    });
+  draw();
+}
+
+function addBoard() {
+  const b = { id: uid(), name: 'Board ' + (state.boards.length + 1) };
+  state.boards.push(b); state.active = b.id; save(); render();
+}
+
+function pickBoard(title, fn) {
+  const others = state.boards.filter(b => b.id !== state.active);
+  if (!others.length) return toast('Maak eerst een tweede board aan via de + naast de tabs.');
+  openModal(`<h2>${title}</h2>${others.map(b => `<button class="btn" data-to="${b.id}">${esc(b.name)}</button>`).join('')}<button class="btn" id="pc">Annuleer</button>`, s => {
+    s.querySelectorAll('[data-to]').forEach(btn => btn.onclick = () => { fn(btn.dataset.to); closeModal(); });
+    s.querySelector('#pc').onclick = closeModal;
+  });
+}
+
+function targets() {
+  if (bulk) return boardPads().filter(p => bulkSel.has(p.id));
+  const p = selected && padById(selected);
+  return p && p.boardId === state.active ? [p] : [];
+}
+function clonePad(p, boardId) { return { ...p, id: uid(), boardId, played: false }; }
+
+/* ---------- events ---------- */
+$('#tabs').addEventListener('click', e => {
+  if (e.target.closest('#addBoard')) return addBoard();
+  const t = e.target.closest('[data-board]'); if (!t) return;
+  state.active = t.dataset.board; bulkSel.clear(); save(); render();
+});
+$('#tabs').addEventListener('dblclick', e => { if (e.target.closest('[data-board]')) boardSettings(); });
+
+$('#grid').addEventListener('click', e => {
+  if (e.target.closest('#addPad')) return $('#fileIn').click();
+  const node = e.target.closest('.pad'); if (!node) return;
+  const p = padById(node.dataset.id);
+  const act = e.target.closest('[data-act]')?.dataset.act;
+  if (act === 'settings') return padSettings(p);
+  if (act === 'fadeIn' || act === 'fadeOut' || act === 'loop') {
+    p[act] = !p[act];
+    if (act === 'loop' && playing.get(p.id)) playing.get(p.id).el.loop = p.loop;
+    save(); return render();
+  }
+  if (act === 'left' || act === 'right') {
+    const list = boardPads(), i = list.indexOf(p), other = list[act === 'left' ? i - 1 : i + 1];
+    if (!other) return;
+    const a = state.pads.indexOf(p), b = state.pads.indexOf(other);
+    [state.pads[a], state.pads[b]] = [state.pads[b], state.pads[a]];
+    save(); return render();
+  }
+  if (bulk) { bulkSel.has(p.id) ? bulkSel.delete(p.id) : bulkSel.add(p.id); return render(); }
+  if (edit) return padSettings(p);
+  if (playing.has(p.id) && !playing.get(p.id).stopping) { stopPad(p.id, true); selected = p.id; render(); }
+  else startPad(p);
+});
+$('#grid').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('pad')) { e.preventDefault(); e.stopPropagation(); e.target.click(); } });
+
+function playSelected() {
+  const p = selected && padById(selected) || boardPads()[0];
+  if (!p) return toast('Voeg eerst nummers toe.');
+  startPad(p);
+}
+$('#btnFade').onclick = fadeAll;
+$('#btnPause').onclick = togglePause;
+document.querySelectorAll('.tset').forEach(b => b.onclick = () => startTimer(+b.dataset.min));
+$('#tClock').onclick = toggleTimer;
+$('#tReset').onclick = resetTimer;
+$('#btnStop').onclick = stopAll;
+$('#btnFull').onclick = () => {
+  try {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else (document.documentElement.requestFullscreen?.() || Promise.reject()).catch(() => toast('Volledig scherm werkt hier niet.'));
+  } catch (e) { toast('Volledig scherm werkt hier niet.'); }
+};
+$('#btnSettings').onclick = boardSettings;
+$('#btnEdit').onclick = () => { edit = !edit; if (edit) bulk = false; render(); toast(edit ? 'Bewerkmodus: tik een pad om te hernoemen, pijlen om te verschuiven' : 'Bewerkmodus uit'); };
+$('#btnBulk').onclick = () => { bulk = !bulk; if (bulk) { edit = false; bulkSel.clear(); } render(); if (bulk) toast('Tik pads om ze te selecteren'); };
+
+document.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => {
+  const list = targets();
+  if (!list.length) return toast(bulk ? 'Selecteer eerst pads' : 'Selecteer eerst een pad');
+  const tool = b.dataset.tool;
+  const room = MAX - state.pads.length;
+  if (tool === 'copy') pickBoard(`Kopieer ${list.length} naar`, to => {
+    if (list.length > room) return toast(`Past niet: nog ${room} plekken vrij.`);
+    list.forEach(p => state.pads.push(clonePad(p, to))); save(); render(); toast(`${list.length} gekopieerd`);
+  });
+  if (tool === 'move') pickBoard(`Verplaats ${list.length} naar`, to => {
+    list.forEach(p => { p.boardId = to; const i = state.pads.indexOf(p); state.pads.splice(i, 1); state.pads.push(p); bulkSel.delete(p.id); });
+    save(); render(); toast(`${list.length} verplaatst`);
+  });
+  if (tool === 'dup') {
+    if (list.length > room) return toast(`Past niet: nog ${room} plekken vrij.`);
+    list.slice().reverse().forEach(p => state.pads.splice(state.pads.indexOf(p) + 1, 0, clonePad(p, p.boardId)));
+    save(); render(); toast(`${list.length} gedupliceerd`);
+  }
+  if (tool === 'delete') openModal(`<h2>Verwijderen</h2><p class="note">${list.length === 1 ? `“${esc(list[0].name)}”` : list.length + ' pads'} verwijderen van dit board?</p><div class="row"><button class="btn" id="dNo">Annuleer</button><button class="btn danger armed" id="dYes">Verwijder</button></div>`, s => {
+    s.querySelector('#dNo').onclick = closeModal;
+    s.querySelector('#dYes').onclick = () => { removePads(list.map(p => p.id)); closeModal(); };
+  });
+});
+
+$('#fileIn').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+let dragDepth = 0;
+addEventListener('dragenter', e => { if ([...e.dataTransfer.types].includes('Files')) { dragDepth++; $('#drop').hidden = false; e.preventDefault(); } });
+addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('#drop').hidden = true; } });
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('#drop').hidden = true; if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+
+addEventListener('keydown', e => {
+  if (!$('#modal').hidden) { if (e.key === 'Escape') closeModal(); return; }
+  if (e.target.matches('input')) return;
+  if (e.key === ' ') { e.preventDefault(); current ? togglePause() : playSelected(); }
+  else if (e.key === 'Escape') stopAll();
+  else if (e.key === 'f' || e.key === 'F') fadeAll();
+  else if (e.key === 'Enter' && !e.target.classList.contains('pad')) playSelected();
+});
+
+/* ---------- boot ---------- */
+(async () => {
+  setMaster(state.master);
+  drawTimer();
+  render();
+  const ids = [...new Set(state.pads.map(p => p.fileId))];
+  for (const id of ids) { const blob = await idbGet(id); if (blob) urls[id] = URL.createObjectURL(blob); }
+  if (!selected) selected = boardPads()[0]?.id ?? null;
+  render();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+</script>
+</body>
+</html>
