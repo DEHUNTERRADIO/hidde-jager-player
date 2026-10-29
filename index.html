@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#0a0907">
+<meta name="theme-color" content="#0e1114">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -25,20 +25,20 @@ img { max-width: 100%; }
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Cinzel:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Layout: one-screen soundboard — header + board tabs, scrolling pad grid with master fader on the right, transport bar at the bottom. Single black & gold look. */
+/* Layout: one-screen soundboard — header + board tabs, scrolling pad grid with master fader on the right, transport bar at the bottom. Single calm slate look. */
 :root {
-  --bg: #0a0907;
-  --surface: #13110c;
-  --pad: #1c1912;
-  --pad-2: #14120d;
-  --line: #3a3121;
-  --gold: #d4af37;
-  --gold-hi: #f3d77e;
-  --gold-lo: #8c6d1f;
-  --text: #f4ecd8;
-  --muted: #9c8f70;
-  --ink: #0a0907;
-  --danger: #e0604e;
+  --bg: #0e1114;
+  --surface: #161b20;
+  --pad: #212931;
+  --pad-2: #1a2027;
+  --line: #2f3a44;
+  --accent: #8fb3c4;
+  --accent-hi: #c3d8e2;
+  --accent-lo: #5b7d8c;
+  --text: #e6ecef;
+  --muted: #8796a0;
+  --ink: #0e1114;
+  --danger: #d27a6e;
   --f-brand: "Cinzel", "Trajan Pro", Georgia, serif;
   --f-ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --f-num: "JetBrains Mono", ui-monospace, Menlo, monospace;
@@ -54,7 +54,7 @@ body {
   user-select: none; -webkit-user-select: none;
 }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
-button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
 
 .app {
   height: 100%;
@@ -67,7 +67,7 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
   padding-block: 10px 12px;
   gap: 12px;
   background:
-    radial-gradient(1200px 500px at 50% -200px, rgba(212,175,55,.10), transparent 70%),
+    radial-gradient(1200px 500px at 50% -200px, rgba(143,179,196,.10), transparent 70%),
     var(--bg);
 }
 
@@ -77,8 +77,7 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
 .brand h1 {
   margin: 0; font-family: var(--f-brand); font-weight: 800; letter-spacing: .14em;
   font-size: clamp(15px, 2.4vw, 22px); line-height: 1.1;
-  background: linear-gradient(180deg, var(--gold-hi), var(--gold) 55%, var(--gold-lo));
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+  color: var(--text);
 }
 .brand h1 span { letter-spacing: .32em; font-weight: 600; }
 .total { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -90,17 +89,17 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
 }
 .ibtn {
   width: 40px; height: 36px; border-radius: 999px; display: grid; place-items: center;
-  color: var(--gold);
+  color: var(--accent);
 }
-.ibtn:hover { background: rgba(212,175,55,.12); }
-.ibtn.on { background: var(--gold); color: var(--ink); }
+.ibtn:hover { background: rgba(143,179,196,.12); }
+.ibtn.on { background: var(--accent); color: var(--ink); }
 .ibtn svg { width: 20px; height: 20px; }
 .right { justify-self: end; display: flex; gap: 8px; align-items: center; }
 .pill {
   height: 42px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--line);
-  background: var(--surface); color: var(--gold); font-weight: 700; letter-spacing: .04em;
+  background: var(--surface); color: var(--accent); font-weight: 700; letter-spacing: .04em;
 }
-.pill.on { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+.pill.on { background: var(--accent); color: var(--ink); border-color: var(--accent); }
 
 /* Board tabs */
 .tabs { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
@@ -108,12 +107,12 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
 .tab {
   flex: 0 0 auto; min-width: 150px; height: 34px; padding: 0 18px; border-radius: 999px;
   background: var(--surface); border: 1px solid var(--line);
-  color: var(--gold); font-weight: 700; font-size: 14px; letter-spacing: .03em;
+  color: var(--accent); font-weight: 700; font-size: 14px; letter-spacing: .03em;
 }
 .tab.active {
-  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
-  color: var(--ink); border-color: var(--gold);
-  box-shadow: 0 0 18px rgba(212,175,55,.35);
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+  color: var(--ink); border-color: var(--accent);
+
 }
 .tab .n { opacity: .6; font-weight: 600; margin-left: 6px; font-size: 12px; }
 .tab.add { min-width: 0; width: 34px; padding: 0; font-size: 18px; }
@@ -131,13 +130,15 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
   display: grid; grid-template-rows: auto 1fr auto; padding: 10px 12px 9px;
   cursor: pointer; transition: border-color .15s, transform .08s;
 }
-.pad:hover { border-color: var(--gold-lo); }
+.pad:hover { border-color: var(--accent-lo); }
+.pad { -webkit-touch-callout: none; }
+.pad.holding { border-color: var(--accent-hi); transform: scale(.97); }
 .pad:active { transform: scale(.985); }
-.pad.sel { box-shadow: 0 0 0 3px var(--gold-hi); border-color: var(--gold-hi); }
-.pad.bulk { box-shadow: 0 0 0 3px var(--gold); }
+.pad.sel { box-shadow: 0 0 0 3px var(--accent-hi); border-color: var(--accent-hi); }
+.pad.bulk { box-shadow: 0 0 0 3px var(--accent); }
 .pad.bulk::after {
   content: "✓"; position: absolute; top: 8px; right: 8px; width: 22px; height: 22px;
-  border-radius: 50%; background: var(--gold); color: var(--ink); display: grid; place-items: center;
+  border-radius: 50%; background: var(--accent); color: var(--ink); display: grid; place-items: center;
   font-weight: 800; font-size: 13px;
 }
 .pad.missing { opacity: .45; }
@@ -146,8 +147,8 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
   width: 28px; height: 24px; display: grid; place-items: center; border-radius: 6px;
   color: var(--muted); opacity: .55;
 }
-.pad .icons button.on { color: var(--gold-hi); opacity: 1; }
-.pad .icons button:hover { opacity: 1; background: rgba(212,175,55,.12); }
+.pad .icons button.on { color: var(--accent-hi); opacity: 1; }
+.pad .icons button:hover { opacity: 1; background: rgba(143,179,196,.12); }
 .pad .icons svg { width: 15px; height: 15px; }
 .pad .name {
   position: relative; z-index: 1; align-self: center; text-align: center;
@@ -160,13 +161,13 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
   display: flex; justify-content: space-between; align-items: baseline;
   font-family: var(--f-num); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums;
 }
-.pad .played { font-family: var(--f-ui); font-weight: 800; letter-spacing: .08em; font-size: 10px; color: var(--gold); visibility: hidden; }
+.pad .played { font-family: var(--f-ui); font-weight: 800; letter-spacing: .08em; font-size: 10px; color: var(--accent); visibility: hidden; }
 .pad.was .played { visibility: visible; }
 .pad .prog { position: absolute; inset: 0 auto 0 0; width: 0; background: rgba(10,9,7,.18); pointer-events: none; }
 .pad.playing {
-  background: linear-gradient(160deg, var(--gold-hi), var(--gold) 60%, #b38f25);
-  border-color: var(--gold-hi); color: var(--ink);
-  box-shadow: 0 0 26px rgba(212,175,55,.45);
+  background: linear-gradient(160deg, var(--accent-hi), var(--accent) 60%, var(--accent-lo));
+  border-color: var(--accent-hi); color: var(--ink);
+
 }
 .pad.playing .meta, .pad.playing .played, .pad.playing .icons button { color: var(--ink); }
 .pad.playing .icons button.on { color: var(--ink); }
@@ -174,16 +175,16 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
 @keyframes blink { 50% { filter: brightness(.7); } }
 .pad .edit-row { position: absolute; inset: auto 6px 30px; display: flex; justify-content: space-between; z-index: 2; }
 .pad .edit-row button {
-  width: 30px; height: 30px; border-radius: 50%; background: var(--gold); color: var(--ink);
+  width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--ink);
   font-weight: 800; display: grid; place-items: center;
 }
 
 .addpad {
-  aspect-ratio: 1.15; max-width: 100%; border-radius: 14px; border: 1.5px dashed var(--gold-lo);
-  color: var(--gold); display: grid; place-items: center; text-align: center; padding: 12px;
-  background: rgba(212,175,55,.04); font-weight: 700; font-size: 14px; gap: 4px;
+  aspect-ratio: 1.15; max-width: 100%; border-radius: 14px; border: 1.5px dashed var(--accent-lo);
+  color: var(--accent); display: grid; place-items: center; text-align: center; padding: 12px;
+  background: rgba(143,179,196,.04); font-weight: 700; font-size: 14px; gap: 4px;
 }
-.addpad:hover { background: rgba(212,175,55,.1); }
+.addpad:hover { background: rgba(143,179,196,.1); }
 .addpad small { display: block; color: var(--muted); font-weight: 500; font-size: 12px; margin-top: 4px; }
 .addpad .plus { font-size: 30px; line-height: 1; font-weight: 500; }
 .empty-hint { grid-column: 1 / -1; color: var(--muted); font-size: 14px; padding: 4px 2px 0; }
@@ -194,14 +195,14 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
   border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 12px 6px;
   height: min(100%, 300px);
 }
-.master .lbl { font-size: 11px; font-weight: 800; letter-spacing: .1em; color: var(--gold); }
+.master .lbl { font-size: 11px; font-weight: 800; letter-spacing: .1em; color: var(--accent); }
 .master .val { font-family: var(--f-num); font-size: 11px; color: var(--text); }
 .fader { position: relative; flex: 1; width: 40px; touch-action: none; cursor: ns-resize; }
-.fader .track { position: absolute; left: 50%; top: 10px; bottom: 10px; width: 6px; transform: translateX(-50%); background: #2a2418; border-radius: 3px; }
-.fader .fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, var(--gold-lo), var(--gold-hi)); border-radius: 3px; }
+.fader .track { position: absolute; left: 50%; top: 10px; bottom: 10px; width: 6px; transform: translateX(-50%); background: var(--line); border-radius: 3px; }
+.fader .fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, var(--accent-lo), var(--accent-hi)); border-radius: 3px; }
 .fader .knob {
   position: absolute; left: 50%; width: 30px; height: 20px; transform: translate(-50%, 50%);
-  border-radius: 8px; background: linear-gradient(180deg, #fff6d8, var(--gold-hi)); box-shadow: 0 2px 8px rgba(0,0,0,.6);
+  border-radius: 8px; background: linear-gradient(180deg, #ffffff, var(--accent-hi)); box-shadow: 0 2px 8px rgba(0,0,0,.6);
 }
 
 /* Bottom bar */
@@ -211,24 +212,24 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
 .now { min-width: 0; flex: 1; display: flex; align-items: center; gap: 12px; }
 .now .np { min-width: 0; }
 .now .np small { display: block; font-size: 10px; letter-spacing: .12em; font-weight: 800; color: var(--muted); }
-.now .np div { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--gold-hi); }
+.now .np div { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--accent-hi); }
 .sq {
   width: 56px; height: 48px; border-radius: 10px; display: grid; place-items: center;
-  background: var(--surface); border: 1px solid var(--line); color: var(--gold);
+  background: var(--surface); border: 1px solid var(--line); color: var(--accent);
 }
 .sq svg { width: 22px; height: 22px; }
 .transport { display: flex; gap: 10px; }
-.transport .sq { width: 64px; height: 52px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: var(--ink); border-color: var(--gold); }
+.transport .sq { width: 64px; height: 52px; background: linear-gradient(180deg, var(--accent-hi), var(--accent)); color: var(--ink); border-color: var(--accent); }
 .transport .sq:active { filter: brightness(.85); }
 
 /* Set timer */
 .timer { display: flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 4px; flex: 0 0 auto; }
-.tset { width: 40px; height: 40px; border-radius: 8px; color: var(--gold); font-weight: 800; font-family: var(--f-num); }
-.tset:hover { background: rgba(212,175,55,.12); }
-.tset.on { background: var(--gold); color: var(--ink); }
-.tclock { min-width: 92px; height: 40px; padding: 0 8px; border-radius: 8px; font-family: var(--f-num); font-weight: 700; font-size: 22px; color: var(--gold-hi); font-variant-numeric: tabular-nums; }
+.tset { width: 40px; height: 40px; border-radius: 8px; color: var(--accent); font-weight: 800; font-family: var(--f-num); }
+.tset:hover { background: rgba(143,179,196,.12); }
+.tset.on { background: var(--accent); color: var(--ink); }
+.tclock { min-width: 92px; height: 40px; padding: 0 8px; border-radius: 8px; font-family: var(--f-num); font-weight: 700; font-size: 22px; color: var(--accent-hi); font-variant-numeric: tabular-nums; }
 .tclock.paused { opacity: .5; }
-.tclock.warn { color: #ffb347; }
+.tclock.warn { color: #d9b17a; }
 .tclock.over { color: var(--danger); animation: blink 1s steps(2) infinite; }
 .treset { width: 30px; height: 40px; color: var(--muted); font-size: 20px; }
 
@@ -236,21 +237,21 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: grid; place-items: center; z-index: 50; padding: 16px; }
 .sheet {
   width: min(460px, 100%); max-height: 90%; overflow-y: auto;
-  background: var(--surface); border: 1px solid var(--gold-lo); border-radius: 18px; padding: 20px;
+  background: var(--surface); border: 1px solid var(--accent-lo); border-radius: 18px; padding: 20px;
   display: grid; gap: 14px; user-select: text; -webkit-user-select: text;
 }
-.sheet h2 { margin: 0; font-family: var(--f-brand); color: var(--gold); font-size: 18px; letter-spacing: .08em; }
+.sheet h2 { margin: 0; font-family: var(--f-brand); color: var(--accent); font-size: 18px; letter-spacing: .08em; }
 .sheet label { display: grid; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
 .sheet input[type=text], .sheet input[type=number] {
   background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 10px;
   padding: 10px 12px; font: inherit; font-size: 15px;
 }
-.sheet input[type=range] { accent-color: var(--gold); }
+.sheet input[type=range] { accent-color: var(--accent); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .chk { display: flex !important; grid-auto-flow: column; align-items: center; gap: 8px !important; font-size: 14px !important; color: var(--text) !important; }
-.chk input { accent-color: var(--gold); width: 18px; height: 18px; }
-.btn { height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--gold); font-weight: 700; }
-.btn.primary { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+.chk input { accent-color: var(--accent); width: 18px; height: 18px; }
+.btn { height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--accent); font-weight: 700; }
+.btn.primary { background: var(--accent); color: var(--ink); border-color: var(--accent); }
 .btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, var(--line)); }
 .btn.danger.armed { background: var(--danger); color: var(--ink); }
 .boardrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
@@ -258,10 +259,10 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
 
 .toast {
   position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
-  background: var(--gold); color: var(--ink); font-weight: 700; padding: 10px 16px; border-radius: 999px;
+  background: var(--accent); color: var(--ink); font-weight: 700; padding: 10px 16px; border-radius: 999px;
   z-index: 60; max-width: calc(100% - 32px); text-align: center; font-size: 14px;
 }
-.drop { position: fixed; inset: 0; z-index: 40; background: rgba(10,9,7,.85); border: 3px dashed var(--gold); display: grid; place-items: center; font-family: var(--f-brand); color: var(--gold); font-size: 24px; pointer-events: none; }
+.drop { position: fixed; inset: 0; z-index: 40; background: rgba(10,9,7,.85); border: 3px dashed var(--accent); display: grid; place-items: center; font-family: var(--f-brand); color: var(--accent); font-size: 24px; pointer-events: none; }
 
 @media (max-width: 640px) {
   .top { grid-template-columns: auto 1fr; }
@@ -615,6 +616,7 @@ function render() {
   }).join('');
   if (state.pads.length < MAX) html += `<button class="addpad" id="addPad"><span><span class="plus">+</span><br>Nummers toevoegen<small>mp3 of wav · nog ${MAX - state.pads.length} vrij</small></span></button>`;
   if (!list.length) html += `<p class="empty-hint">Dit board is nog leeg. Tik op “Nummers toevoegen” of sleep mp3/wav-bestanden op het scherm.</p>`;
+  else html += `<p class="empty-hint">Tip: houd een pad even ingedrukt om de titel te wijzigen.</p>`;
   $('#grid').innerHTML = html;
 
   $('#btnBulk').classList.toggle('on', bulk);
@@ -674,6 +676,21 @@ function armDelete(btn, fn) {
   });
 }
 
+function renamePad(p) {
+  if (!p) return;
+  openModal(`
+    <h2>Titel wijzigen</h2>
+    <label>Titel van het nummer<input type="text" id="rName" value="${esc(p.name)}" autocomplete="off" enterkeyhint="done"></label>
+    <div class="row"><button class="btn" id="rCancel">Annuleer</button><span style="flex:1"></span><button class="btn primary" id="rOk">Opslaan</button></div>`,
+    s => {
+      const input = s.querySelector('#rName');
+      const ok = () => { const v = input.value.trim(); if (v) { p.name = v; save(); toast('Titel opgeslagen'); } closeModal(); render(); };
+      s.querySelector('#rOk').onclick = ok;
+      s.querySelector('#rCancel').onclick = closeModal;
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+      input.focus(); input.select();
+    });
+}
 function padSettings(p) {
   openModal(`
     <h2>Pad</h2>
@@ -763,7 +780,27 @@ $('#tabs').addEventListener('click', e => {
 });
 $('#tabs').addEventListener('dblclick', e => { if (e.target.closest('[data-board]')) boardSettings(); });
 
+/* Hold a pad for half a second to rename it. The dialog opens on release,
+   so the iPad keyboard is allowed to appear straight away. */
+let hold = null, suppressClick = false;
+$('#grid').addEventListener('pointerdown', e => {
+  const node = e.target.closest('.pad');
+  if (!node || e.target.closest('[data-act]') || bulk) return;
+  hold = { id: node.dataset.id, t: Date.now(), x: e.clientX, y: e.clientY, node, timer: setTimeout(() => node.classList.add('holding'), 500) };
+});
+$('#grid').addEventListener('pointermove', e => {
+  if (hold && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 12) { clearTimeout(hold.timer); hold.node.classList.remove('holding'); hold = null; }
+});
+$('#grid').addEventListener('pointerup', () => {
+  if (!hold) return;
+  const h = hold; hold = null; clearTimeout(h.timer); h.node.classList.remove('holding');
+  if (Date.now() - h.t >= 500) { suppressClick = true; renamePad(padById(h.id)); }
+});
+$('#grid').addEventListener('pointercancel', () => { if (hold) { clearTimeout(hold.timer); hold.node.classList.remove('holding'); hold = null; } });
+$('#grid').addEventListener('contextmenu', e => { if (e.target.closest('.pad')) e.preventDefault(); });
+
 $('#grid').addEventListener('click', e => {
+  if (suppressClick) { suppressClick = false; return; }
   if (e.target.closest('#addPad')) return $('#fileIn').click();
   const node = e.target.closest('.pad'); if (!node) return;
   const p = padById(node.dataset.id);
@@ -782,7 +819,7 @@ $('#grid').addEventListener('click', e => {
     save(); return render();
   }
   if (bulk) { bulkSel.has(p.id) ? bulkSel.delete(p.id) : bulkSel.add(p.id); return render(); }
-  if (edit) return padSettings(p);
+  if (edit) return renamePad(p);
   if (playing.has(p.id) && !playing.get(p.id).stopping) { stopPad(p.id, true); selected = p.id; render(); }
   else startPad(p);
 });

@@ -17,7 +17,7 @@ head = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#0a0907">
+<meta name="theme-color" content="#0e1114">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -52,8 +52,8 @@ try { navigator.storage && navigator.storage.persist && navigator.storage.persis
     "scope": "./",
     "display": "fullscreen",
     "orientation": "any",
-    "background_color": "#0a0907",
-    "theme_color": "#0a0907",
+    "background_color": "#0e1114",
+    "theme_color": "#0e1114",
     "icons": [
         {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
         {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
@@ -89,9 +89,9 @@ self.addEventListener('fetch', e => {{
 }});
 """, encoding="utf-8")
 
-# Icons: gold fade-triangle on black, drawn without image libraries.
+# Icons: slate-blue fade-triangle on near-black, drawn without image libraries.
 def png(size, path):
-    gold_hi, gold, gold_lo, bg = (243, 215, 126), (212, 175, 55), (140, 109, 31), (10, 9, 7)
+    gold_hi, gold, gold_lo, bg = (195, 216, 226), (143, 179, 196), (91, 125, 140), (14, 17, 20)
     m = size * 0.2
     x0, x1, y0, y1 = m, size - m, size * 0.27, size - size * 0.27
     rows = []

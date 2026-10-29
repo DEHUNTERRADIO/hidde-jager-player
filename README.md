@@ -1,6 +1,6 @@
 # Hidde Jager PLAYER
 
-Zwart-gouden soundboard voor optredens. Werkt offline op de iPad als app op het beginscherm.
+Rustig donker soundboard voor optredens. Werkt offline op de iPad als app op het beginscherm.
 
 ## Op de iPad installeren
 
@@ -12,6 +12,7 @@ Zwart-gouden soundboard voor optredens. Werkt offline op de iPad als app op het 
 ## Bediening
 
 - Tik op een pad: afspelen, nog eens tikken: stoppen.
+- Houd een pad even ingedrukt om de titel te wijzigen.
 - Driehoek rechtsonder: huidig nummer langzaam naar volume 0 (duur instelbaar via het tandwiel).
 - Timer linksonder: **30** of **60** start een aftelklok, tik op de tijd om te pauzeren, **×** reset. In de laatste 5 minuten kleurt hij oranje, daarna telt hij rood door.
 - Toetsenbord: spatie = pauze, Esc = stop, F = fade.
