@@ -1,5 +1,5 @@
 // Offline cache for Hidde Jager PLAYER. Version follows the page content.
-const CACHE = 'hj-player-54c74d8939';
+const CACHE = 'hj-player-752a80391c';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {

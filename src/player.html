@@ -22,7 +22,7 @@
   --f-num: "JetBrains Mono", ui-monospace, Menlo, monospace;
   color-scheme: dark;
 }
-html, body { height: 100%; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 body {
   background: var(--bg);
   color: var(--text);
@@ -38,6 +38,7 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
   height: 100%;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -182,7 +183,9 @@ button:focus-visible, .pad:focus-visible, input:focus-visible { outline: 2px sol
 }
 
 /* Bottom bar */
+.app > * { min-width: 0; }
 .bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bottom > .transport, .now > .timer, .now > .sq { flex-shrink: 0; }
 .now { min-width: 0; flex: 1; display: flex; align-items: center; gap: 12px; }
 .now .np { min-width: 0; }
 .now .np small { display: block; font-size: 10px; letter-spacing: .12em; font-weight: 800; color: var(--muted); }
@@ -390,11 +393,21 @@ function ensureCtx() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     master = ctx.createGain(); master.gain.value = state.master; master.connect(ctx.destination);
   }
-  if (ctx.state === 'suspended') ctx.resume();
+  // iPad reports 'interrupted' after the app was in the background.
+  if (ctx.state !== 'running') ctx.resume().catch(() => {});
 }
 
-function startPad(p) {
+const BROKEN = 'Dit nummer kan niet worden afgespeeld. Verwijder de pad en voeg het bestand opnieuw toe.';
+async function reloadFile(fileId) {
+  const blob = await idbGet(fileId);
+  if (!blob || !blob.size) return false;
+  if (urls[fileId]) URL.revokeObjectURL(urls[fileId]);
+  urls[fileId] = URL.createObjectURL(blob);
+  return true;
+}
+function startPad(p, retried) {
   if (!urls[p.fileId]) return toast('Dit bestand ontbreekt. Voeg het opnieuw toe.');
+  if (p.broken) return toast(BROKEN, 5000);
   ensureCtx();
   for (const id of [...playing.keys()]) stopPad(id, true);
   const el = new Audio(urls[p.fileId]);
@@ -413,7 +426,13 @@ function startPad(p) {
   selected = list[i + 1]?.id ?? p.id;
   el.addEventListener('loadedmetadata', () => { if (isFinite(el.duration)) { p.dur = el.duration; save(); renderTotal(); } });
   el.onended = () => { if (!pl.stopping) { cleanup(p.id); render(); } };
-  el.play().catch(() => { cleanup(p.id); toast('Afspelen lukt niet. Tik nog een keer op de pad.'); render(); });
+  el.play().catch(async err => {
+    cleanup(p.id); render();
+    if (err && err.name === 'NotAllowedError') return toast('De iPad blokkeerde het geluid. Tik nog een keer op de pad.');
+    // The file link may have gone stale: load it again from storage and try once more.
+    if (!retried && await reloadFile(p.fileId)) return startPad(p, true);
+    p.broken = true; save(); render(); toast(BROKEN, 5000);
+  });
   save(); render(); tick();
 }
 
@@ -505,16 +524,31 @@ async function addFiles(fileList) {
   const room = MAX - state.pads.length;
   if (room <= 0) return toast(`Vol: maximaal ${MAX} nummers.`);
   const take = files.slice(0, room);
+  const failed = [];
+  let added = 0;
+  toast(`Bezig met inlezen van ${take.length} ${take.length === 1 ? 'nummer' : 'nummers'}…`);
   for (const f of take) {
+    // Copy the bytes into our own Blob: on iPad a picked file is a temporary
+    // reference that can stop working, and iCloud files may not be downloaded yet.
+    let buf = null;
+    try { buf = await f.arrayBuffer(); } catch (e) {}
+    if (!buf || !buf.byteLength) { failed.push(f.name); continue; }
+    const blob = new Blob([buf], { type: f.type || (/\.wav$/i.test(f.name) ? 'audio/wav' : 'audio/mpeg') });
+    const url = URL.createObjectURL(blob);
+    const dur = await durationOf(url);
+    if (!dur) { URL.revokeObjectURL(url); failed.push(f.name); continue; }
     const fileId = uid();
-    urls[fileId] = URL.createObjectURL(f);
-    const dur = await durationOf(urls[fileId]);
-    idbPut(fileId, f);
+    urls[fileId] = url;
+    await idbPut(fileId, blob);
     state.pads.push({ id: uid(), boardId: state.active, fileId, name: f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim(), dur, vol: 1, fadeIn: false, fadeOut: false, loop: false, played: false });
     if (!selected) selected = state.pads.at(-1).id;
+    added++;
   }
   save(); render();
-  toast(files.length > take.length ? `${take.length} toegevoegd. De rest past niet: maximaal ${MAX} nummers.` : `${take.length} ${take.length === 1 ? 'nummer' : 'nummers'} toegevoegd`);
+  let msg = `${added} ${added === 1 ? 'nummer' : 'nummers'} toegevoegd`;
+  if (failed.length) msg += `. Niet gelukt: ${failed.join(', ')}. Staat het bestand in iCloud? Download het eerst in de Bestanden-app.`;
+  if (files.length > take.length) msg += ` De rest past niet: maximaal ${MAX} nummers.`;
+  toast(msg, failed.length ? 7000 : 2600);
 }
 function fileStillUsed(fileId) { return state.pads.some(p => p.fileId === fileId); }
 function removePads(ids) {
@@ -543,7 +577,7 @@ function render() {
   const list = boardPads();
   let html = list.map((p, i) => {
     const pl = playing.get(p.id);
-    const cls = ['pad', pl && 'playing', pl?.paused && 'paused', p.played && 'was', selected === p.id && !bulk && 'sel', bulk && bulkSel.has(p.id) && 'bulk', !urls[p.fileId] && 'missing'].filter(Boolean).join(' ');
+    const cls = ['pad', pl && 'playing', pl?.paused && 'paused', p.played && 'was', selected === p.id && !bulk && 'sel', bulk && bulkSel.has(p.id) && 'bulk', (!urls[p.fileId] || p.broken) && 'missing'].filter(Boolean).join(' ');
     return `<div class="${cls}" data-id="${p.id}" tabindex="0" role="button" aria-label="${esc(p.name)}">
       <div class="prog"></div>
       <div class="icons">
@@ -593,9 +627,22 @@ function setMaster(v) {
 
 /* ---------- modal / toast ---------- */
 let toastT;
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, ms); }
 function openModal(html, bind) { $('#sheet').innerHTML = html; $('#modal').hidden = false; bind && bind($('#sheet')); }
-function closeModal() { $('#modal').hidden = true; $('#sheet').innerHTML = ''; }
+function closeModal() { $('#modal').hidden = true; $('#sheet').innerHTML = ''; resetScroll(); }
+
+/* The app is one fixed screen. iPad Safari can still shift the page (after the
+   keyboard closes, or a long line of text), which pushes the bottom bar away. */
+function resetScroll() {
+  if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+  document.documentElement.scrollLeft = document.documentElement.scrollTop = 0;
+  document.body.scrollLeft = document.body.scrollTop = 0;
+  const app = $('#app'); app.scrollLeft = app.scrollTop = 0;
+}
+addEventListener('scroll', () => { if (!document.activeElement?.matches('input')) resetScroll(); }, { passive: true });
+document.addEventListener('focusout', () => setTimeout(resetScroll, 100));
+addEventListener('resize', () => setTimeout(resetScroll, 100));
+addEventListener('orientationchange', () => setTimeout(resetScroll, 300));
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
 function armDelete(btn, fn) {
   btn.addEventListener('click', () => {
@@ -786,7 +833,14 @@ addEventListener('keydown', e => {
   drawTimer();
   render();
   const ids = [...new Set(state.pads.map(p => p.fileId))];
-  for (const id of ids) { const blob = await idbGet(id); if (blob) urls[id] = URL.createObjectURL(blob); }
+  for (const id of ids) { const blob = await idbGet(id); if (blob && blob.size) urls[id] = URL.createObjectURL(blob); }
+  // Pads saved without a length were never read correctly: check them once more.
+  for (const p of state.pads) {
+    if (p.dur || !urls[p.fileId]) continue;
+    p.dur = await durationOf(urls[p.fileId]);
+    p.broken = !p.dur;
+  }
+  save();
   if (!selected) selected = boardPads()[0]?.id ?? null;
   render();
 })();
