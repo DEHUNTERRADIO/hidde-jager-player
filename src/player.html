@@ -361,7 +361,7 @@ const DEFAULT = {
 let state;
 try { state = JSON.parse(localStorage.getItem('hj-player-state')) || null; } catch (e) { state = null; }
 if (!state || !Array.isArray(state.boards) || !state.boards.length) state = structuredClone(DEFAULT);
-state.fadeSec = state.fadeSec ?? 6; state.master = state.master ?? 1;
+state.fadeSec = state.fadeSec ?? 6; state.master = state.master ?? 1; state.normalize = state.normalize ?? true;
 const save = () => { try { localStorage.setItem('hj-player-state', JSON.stringify(state)); } catch (e) {} };
 
 const urls = {};            // fileId -> blob URL
@@ -388,11 +388,91 @@ const idbGet = id => idb('readonly', s => s.get(id));
 const idbDel = id => idb('readwrite', s => s.delete(id));
 
 /* ---------- audio ---------- */
+/* ---------- loudness normaliser ----------
+   Measures each song the way streaming services do (ITU-R BS.1770: K-weighting,
+   400 ms blocks, absolute and relative gate) and turns it up or down to TARGET_LUFS. */
+const TARGET_LUFS = -16;
+let measuring = null; // { done, total } while songs are being measured
+
+async function measureLoudness(buf) {
+  const SR = 16000; // plenty for loudness, and light on iPad memory
+  const Offline = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const audio = await new Offline(2, SR, SR).decodeAudioData(buf);
+  let peak = 0;
+  for (let c = 0; c < audio.numberOfChannels; c++) {
+    const d = audio.getChannelData(c);
+    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
+  }
+  const off = new Offline(2, audio.length, SR);
+  const src = off.createBufferSource(); src.buffer = audio;
+  const shelf = off.createBiquadFilter(); shelf.type = 'highshelf'; shelf.frequency.value = 1500; shelf.gain.value = 4;
+  const hp = off.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 38; hp.Q.value = 0.5;
+  src.connect(shelf); shelf.connect(hp); hp.connect(off.destination); src.start();
+  const out = await off.startRendering();
+  // Sum of squares per 100 ms step; a 400 ms block is four consecutive steps (75% overlap).
+  const hop = SR / 10, steps = Math.floor(out.length / hop), seg = new Float64Array(steps);
+  for (let c = 0; c < out.numberOfChannels; c++) {
+    const d = out.getChannelData(c);
+    for (let k = 0; k < steps; k++) { let s = 0; for (let i = k * hop, e = i + hop; i < e; i++) s += d[i] * d[i]; seg[k] += s; }
+  }
+  const blocks = [];
+  for (let k = 0; k + 4 <= steps; k++) blocks.push((seg[k] + seg[k + 1] + seg[k + 2] + seg[k + 3]) / (4 * hop));
+  if (!blocks.length) blocks.push(seg.reduce((a, b) => a + b, 0) / Math.max(1, steps * hop));
+  const lufsOf = z => -0.691 + 10 * Math.log10(z);
+  const abs = blocks.filter(z => lufsOf(z) > -70);
+  if (!abs.length) return { lufs: -70, peak };
+  const rel = lufsOf(abs.reduce((a, b) => a + b, 0) / abs.length) - 10;
+  const gated = abs.filter(z => lufsOf(z) > rel);
+  return { lufs: lufsOf(gated.reduce((a, b) => a + b, 0) / gated.length), peak };
+}
+function normDb(p) {
+  if (p.lufs == null) return 0;
+  let db = Math.min(12, Math.max(-20, TARGET_LUFS - p.lufs));
+  // Don't push peaks more than 2 dB into the limiter.
+  if (p.peak > 0) db = Math.min(db, 2 - 20 * Math.log10(p.peak));
+  return db;
+}
+function padGain(p) {
+  const norm = state.normalize ? Math.pow(10, normDb(p) / 20) : 1;
+  return (p.vol ?? 1) * norm;
+}
+function applyGains() {
+  if (!ctx) return;
+  for (const [id, pl] of playing) { const p = padById(id); if (p && !pl.stopping) pl.g.gain.setTargetAtTime(padGain(p), ctx.currentTime, .05); }
+}
+async function measurePad(p, buf) {
+  try {
+    if (!buf) { const blob = await idbGet(p.fileId); if (!blob || !blob.size) return; buf = await blob.arrayBuffer(); }
+    const { lufs, peak } = await measureLoudness(buf);
+    for (const q of state.pads) if (q.fileId === p.fileId) { q.lufs = lufs; q.peak = peak; }
+  } catch (e) {
+    for (const q of state.pads) if (q.fileId === p.fileId) q.lufs = null, q.peak = null, q.unmeasurable = true;
+  }
+}
+// Measure songs that were added before the normaliser existed, one at a time.
+async function measureMissing() {
+  if (measuring) return;
+  const todo = [], seen = new Set();
+  for (const p of state.pads) if (p.lufs == null && !p.unmeasurable && !p.broken && !seen.has(p.fileId)) { seen.add(p.fileId); todo.push(p); }
+  if (!todo.length) return;
+  measuring = { done: 0, total: todo.length }; renderTotal();
+  for (const p of todo) {
+    await measurePad(p);
+    measuring.done++; save(); renderTotal(); applyGains();
+  }
+  measuring = null; renderTotal();
+}
+
 let ctx, master;
 function ensureCtx() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
-    master = ctx.createGain(); master.gain.value = state.master; master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = state.master;
+    // Safety limiter: catches the few peaks that normalising a quiet song pushes over 0 dB.
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -1; limiter.knee.value = 0; limiter.ratio.value = 20;
+    limiter.attack.value = 0.003; limiter.release.value = 0.25;
+    master.connect(limiter); limiter.connect(ctx.destination);
   }
   // iPad reports 'interrupted' after the app was in the background.
   if (ctx.state !== 'running') ctx.resume().catch(() => {});
@@ -416,7 +496,7 @@ function startPad(p, retried) {
   const src = ctx.createMediaElementSource(el);
   const g = ctx.createGain();
   src.connect(g); g.connect(master);
-  const now = ctx.currentTime, v = p.vol ?? 1;
+  const now = ctx.currentTime, v = padGain(p);
   if (p.fadeIn) { g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(v, now + state.fadeSec); }
   else g.gain.setValueAtTime(v, now);
   const pl = { el, g, src, stopping: false, paused: false };
@@ -542,6 +622,7 @@ async function addFiles(fileList) {
     urls[fileId] = url;
     await idbPut(fileId, blob);
     state.pads.push({ id: uid(), boardId: state.active, fileId, name: f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim(), dur, vol: 1, fadeIn: false, fadeOut: false, loop: false, played: false });
+    await measurePad(state.pads.at(-1), buf);
     if (!selected) selected = state.pads.at(-1).id;
     added++;
   }
@@ -568,7 +649,8 @@ function removePads(ids) {
 function renderTotal() {
   const list = boardPads();
   const sum = list.reduce((a, p) => a + (p.dur || 0), 0);
-  $('#total').innerHTML = `Board total <b>${fmt(sum)}</b> · ${list.length} pads · ${state.pads.length}/${MAX}`;
+  $('#total').innerHTML = `Board total <b>${fmt(sum)}</b> · ${list.length} pads · ${state.pads.length}/${MAX}` +
+    (measuring ? ` · volume meten ${measuring.done}/${measuring.total}` : '');
 }
 function render() {
   $('#tabs').innerHTML = state.boards.map(b =>
@@ -680,12 +762,12 @@ function padSettings(p) {
       <label class="chk"><input type="checkbox" id="pLoop" ${p.loop ? 'checked' : ''}>Herhalen</label>
       <label class="chk"><input type="checkbox" id="pPlayed" ${p.played ? 'checked' : ''}>Played</label>
     </div>
-    <p class="note">Lengte ${fmt(p.dur)}${urls[p.fileId] ? '' : ' · bestand ontbreekt in deze browser'}</p>
+    <p class="note">Lengte ${fmt(p.dur)}${urls[p.fileId] ? '' : ' · bestand ontbreekt in deze browser'}${p.lufs != null ? ` · gemeten ${p.lufs.toFixed(1)} LUFS · normaliseren ${normDb(p) >= 0 ? '+' : ''}${normDb(p).toFixed(1)} dB${state.normalize ? '' : ' (staat uit)'}` : ''}</p>
     <div class="row"><button class="btn danger" id="pDel">Verwijder pad</button><span style="flex:1"></span><button class="btn primary" id="pOk">Klaar</button></div>`,
     s => {
       s.querySelector('#pVol').oninput = e => {
         p.vol = +e.target.value; s.querySelector('#pVolV').textContent = Math.round(p.vol * 100) + '%';
-        const pl = playing.get(p.id); if (pl && !pl.stopping) pl.g.gain.setTargetAtTime(p.vol, ctx.currentTime, .02);
+        const pl = playing.get(p.id); if (pl && !pl.stopping) pl.g.gain.setTargetAtTime(padGain(p), ctx.currentTime, .02);
       };
       s.querySelector('#pOk').onclick = () => {
         p.name = s.querySelector('#pName').value.trim() || p.name;
@@ -706,6 +788,8 @@ function boardSettings() {
     ${state.boards.map(b => `<div class="boardrow"><input type="text" data-rename="${b.id}" value="${esc(b.name)}" aria-label="Naam board"><button class="btn danger" data-delb="${b.id}" ${state.boards.length < 2 ? 'disabled' : ''}>Verwijder</button></div>`).join('')}
     <button class="btn" id="sAdd">+ Nieuw board</button>
     <label>Fade-duur (seconden)<input type="number" id="sFade" min="0.2" max="15" step="0.1" value="${state.fadeSec}"></label>
+    <label class="chk"><input type="checkbox" id="sNorm" ${state.normalize ? 'checked' : ''}>Alle nummers even hard (normaliseren)</label>
+    <p class="note">Elk nummer wordt gemeten en zachter of harder gezet tot ${TARGET_LUFS} LUFS. Het volume per pad werkt daar nog bovenop.</p>
     <p class="note">${state.pads.length} van ${MAX} nummers gebruikt. Bestanden blijven in deze browser bewaard.</p>
     <div class="row">
       <button class="btn" id="sReset">Wis alle PLAYED</button>
@@ -722,6 +806,7 @@ function boardSettings() {
       }));
       s.querySelector('#sAdd').onclick = () => { addBoard(); draw(); };
       s.querySelector('#sFade').onchange = e => { state.fadeSec = Math.min(15, Math.max(.2, +e.target.value || 6)); save(); };
+      s.querySelector('#sNorm').onchange = e => { state.normalize = e.target.checked; save(); applyGains(); toast(state.normalize ? 'Normaliseren aan' : 'Normaliseren uit'); };
       s.querySelector('#sReset').onclick = () => { state.pads.forEach(p => p.played = false); save(); render(); toast('Alle PLAYED-labels gewist'); };
       armDelete(s.querySelector('#sClear'), () => { removePads(state.pads.map(p => p.id)); closeModal(); });
       s.querySelector('#sOk').onclick = closeModal;
@@ -880,5 +965,6 @@ addEventListener('keydown', e => {
   save();
   if (!selected) selected = boardPads()[0]?.id ?? null;
   render();
+  measureMissing();
 })();
 </script>
