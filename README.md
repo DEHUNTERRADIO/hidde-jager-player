@@ -13,6 +13,7 @@ Rustig donker soundboard voor optredens. Werkt offline op de iPad als app op het
 
 - Tik op een pad: afspelen, nog eens tikken: stoppen.
 - Houd een pad even ingedrukt om de titel te wijzigen.
+- Scherm blijft aan zolang de app open is (standaard aan, tandwiel).
 - Normaliseren (standaard aan, tandwiel): elk nummer wordt gemeten en op -16 LUFS gezet, zodat alles even hard klinkt.
 - Driehoek rechtsonder: huidig nummer langzaam naar volume 0 (duur instelbaar via het tandwiel).
 - Timer linksonder: **30** of **60** start een aftelklok, tik op de tijd om te pauzeren, **×** reset. In de laatste 5 minuten kleurt hij oranje, daarna telt hij rood door.
